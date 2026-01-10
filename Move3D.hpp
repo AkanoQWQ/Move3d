@@ -24,6 +24,9 @@ namespace Move3D{
         Point operator+(Vector delta) const {
             return Point(this->x + delta.x,this->y + delta.y,this->z + delta.z);
         }
+        Vector ToVector() const {
+            return Vector(x,y,z);
+        }
     };
     struct RPY{
         double roll,pitch,yaw;
@@ -82,6 +85,9 @@ namespace Move3D{
     public:
         virtual ~Movement() = default;
         virtual Point Predict(double dt) const = 0;
+        Point GetNowPosition() const {
+            return nowPosition;
+        }
     };
 
     class UniformLinearMotion : public Movement{
