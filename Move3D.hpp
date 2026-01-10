@@ -36,6 +36,10 @@ namespace Move3D{
         }
     };
 
+    Vector operator-(const Point& p1,const Point& p2){
+        return Vector(p2.x - p1.x,p2.y - p1.y,p2.z - p1.z);
+    }
+
     inline double GetDistance(const Point& p1,const Point& p2){
         return sqrt(
             (p1.x - p2.x) * (p1.x - p2.x) + 
