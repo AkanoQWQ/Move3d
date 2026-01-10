@@ -66,6 +66,11 @@ namespace Move3D{
 }//namespace Move3D
 
 inline std::ostream& operator<<(std::ostream& os,const Move3D::Point& _point){
-    os<<'('<<_point.x<<','<<_point.y<<','<<_point.z<<')';
+    os<<"P("<<_point.x<<','<<_point.y<<','<<_point.z<<')';
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os,const Move3D::Vector& _vector){
+    os<<"V("<<_vector.x<<','<<_vector.y<<','<<_vector.z<<')';
     return os;
 }
