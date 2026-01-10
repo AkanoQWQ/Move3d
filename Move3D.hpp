@@ -21,6 +21,13 @@ namespace Move3D{
             return Point(this->x + delta.x,this->y + delta.y,this->z + delta.z);
         }
     };
+    double GetDistance(const Point& p1,const Point& p2){
+        return sqrt(
+            (p1.x - p2.x) * (p1.x - p2.x) + 
+            (p1.y - p2.y) * (p1.y - p2.y) + 
+            (p1.z - p2.z) * (p1.z - p2.z)
+        );
+    }
 
     class Movement{
     protected:
@@ -30,7 +37,7 @@ namespace Move3D{
         virtual Point Predict(double dt) const = 0;
     };
 
-    class UniformLinearMotion : public Move3D::Movement{
+    class UniformLinearMotion : public Movement{
     private:
         Vector velocity;
     public:
@@ -38,7 +45,7 @@ namespace Move3D{
             nowPosition = _nowPosition;
             velocity = _velocity;
         }
-        Move3D::Point Predict(double dt) const override {
+        Point Predict(double dt) const override {
             return nowPosition + velocity * dt;
         }
     };
