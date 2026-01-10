@@ -11,6 +11,9 @@ namespace Move3D{
         Vector operator*(double ratio) const {
             return Vector(x * ratio,y * ratio,z * ratio);
         }
+        double GetLen() const {
+            return sqrt(x * x + y * y + z * z);
+        }
     };
     struct Point{
         double x,y,z;
@@ -69,7 +72,7 @@ namespace Move3D{
         double vx = v.x / len,vy = v.y / len,vz = v.z / len;
         double yaw = atan2(vy,vx);
         double pitch = atan2(-vz,sqrt(vx*vx + vy*vy));
-        
+
         return RPY(0,pitch,yaw);
     }
 
