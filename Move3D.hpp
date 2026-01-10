@@ -1,3 +1,5 @@
+#include <iostream>
+
 namespace Move3D{
     struct Vector{
         double x,y,z;
@@ -5,7 +7,7 @@ namespace Move3D{
         Vector(double _x,double _y,double _z){
             x = _x,y = _y,z = _z;
         }
-        Vector operator*(double ratio){
+        Vector operator*(double ratio) const {
             return Vector(x * ratio,y * ratio,z * ratio);
         }
     };
@@ -15,7 +17,7 @@ namespace Move3D{
         Point(double _x,double _y,double _z){
             x = _x,y = _y,z = _z;
         }
-        Point operator+(Vector delta){
+        Point operator+(Vector delta) const {
             return Point(this->x + delta.x,this->y + delta.y,this->z + delta.z);
         }
     };
@@ -25,10 +27,10 @@ namespace Move3D{
         Point nowPosition;
     public:
         virtual ~Movement() = default;
-        virtual Point Move(double dt) = 0;
+        virtual Point Predict(double dt) const = 0;
     };
 
-    class UniformLinearMotion : Move3D::Movement{
+    class UniformLinearMotion : public Move3D::Movement{
     private:
         Vector velocity;
     public:
@@ -36,8 +38,13 @@ namespace Move3D{
             nowPosition = _nowPosition;
             velocity = _velocity;
         }
-        Move3D::Point Move(double dt) override {
+        Move3D::Point Predict(double dt) const override {
             return nowPosition + velocity * dt;
         }
     };
 }//namespace Move3D
+
+inline std::ostream& operator<<(std::ostream& os,const Move3D::Point& _point){
+    os<<'('<<_point.x<<','<<_point.y<<','<<_point.z<<')';
+    return os;
+}
