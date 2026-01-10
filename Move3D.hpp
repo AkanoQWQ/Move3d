@@ -49,6 +49,20 @@ namespace Move3D{
             return nowPosition + velocity * dt;
         }
     };
+
+    class UniformAcceleratedMotion : public Movement{
+    private:
+        Vector velocity,acceleration;
+    public:
+        UniformAcceleratedMotion(Point _nowPosition,Vector _velocity,Vector _acceleration){
+            nowPosition = _nowPosition;
+            velocity = _velocity;
+            acceleration = _acceleration;
+        }
+        Point Predict(double dt) const override {
+            return nowPosition + velocity * dt + acceleration * 0.5 * dt * dt;
+        }
+    };
 }//namespace Move3D
 
 inline std::ostream& operator<<(std::ostream& os,const Move3D::Point& _point){
