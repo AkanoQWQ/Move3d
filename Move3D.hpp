@@ -1,6 +1,7 @@
 #include <iostream>
 
 namespace Move3D{
+    constexpr double EPS = 1e-10;
     struct Vector{
         double x,y,z;
         Vector() = default;
@@ -29,7 +30,7 @@ namespace Move3D{
         }
     };
 
-    double GetDistance(const Point& p1,const Point& p2){
+    inline double GetDistance(const Point& p1,const Point& p2){
         return sqrt(
             (p1.x - p2.x) * (p1.x - p2.x) + 
             (p1.y - p2.y) * (p1.y - p2.y) + 
@@ -38,7 +39,7 @@ namespace Move3D{
     }
 
     //WARNING:AI-GEN
-    Vector RotateRPY(const Vector& v,const RPY& rpy){
+    inline Vector RotateRPY(const Vector& v,const RPY& rpy){
         double cr = std::cos(rpy.roll),  sr = std::sin(rpy.roll);
         double cp = std::cos(rpy.pitch), sp = std::sin(rpy.pitch);
         double cy = std::cos(rpy.yaw),   sy = std::sin(rpy.yaw);
@@ -59,6 +60,17 @@ namespace Move3D{
         double z3 = z2;
 
         return Vector(x3,y3,z3);
+    }
+
+    inline RPY VectorToRPY(const Vector& v){
+        double len = sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+        if(len <= EPS) return RPY(0,0,0);
+
+        double vx = v.x / len,vy = v.y / len,vz = v.z / len;
+        double yaw = atan2(vy,vx);
+        double pitch = atan2(-vz,sqrt(vx*vx + vy*vy));
+        
+        return RPY(0,pitch,yaw);
     }
 
     class Movement{
