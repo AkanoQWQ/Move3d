@@ -37,6 +37,30 @@ namespace Move3D{
         );
     }
 
+    //WARNING:AI-GEN
+    Vector RotateRPY(const Vector& v,const RPY& rpy){
+        double cr = std::cos(rpy.roll),  sr = std::sin(rpy.roll);
+        double cp = std::cos(rpy.pitch), sp = std::sin(rpy.pitch);
+        double cy = std::cos(rpy.yaw),   sy = std::sin(rpy.yaw);
+
+        // Rx(roll)
+        double x1 = v.x;
+        double y1 = v.y * cr - v.z * sr;
+        double z1 = v.y * sr + v.z * cr;
+
+        // Ry(pitch)
+        double x2 = x1 * cp + z1 * sp;
+        double y2 = y1;
+        double z2 = -x1 * sp + z1 * cp;
+
+        // Rz(yaw)
+        double x3 = x2 * cy - y2 * sy;
+        double y3 = x2 * sy + y2 * cy;
+        double z3 = z2;
+
+        return Vector(x3,y3,z3);
+    }
+
     class Movement{
     protected:
         Point nowPosition;
