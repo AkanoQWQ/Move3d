@@ -21,6 +21,14 @@ namespace Move3D{
             return Point(this->x + delta.x,this->y + delta.y,this->z + delta.z);
         }
     };
+    struct RPY{
+        double roll,pitch,yaw;
+        RPY() = default;
+        RPY(double _roll,double _pitch,double _yaw){
+            roll = _roll,pitch = _pitch,yaw = _yaw;
+        }
+    };
+
     double GetDistance(const Point& p1,const Point& p2){
         return sqrt(
             (p1.x - p2.x) * (p1.x - p2.x) + 
@@ -72,5 +80,10 @@ inline std::ostream& operator<<(std::ostream& os,const Move3D::Point& _point){
 
 inline std::ostream& operator<<(std::ostream& os,const Move3D::Vector& _vector){
     os<<"V("<<_vector.x<<','<<_vector.y<<','<<_vector.z<<')';
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os,const Move3D::RPY& _rpy){
+    os<<"RPY("<<_rpy.roll<<','<<_rpy.pitch<<','<<_rpy.yaw<<')';
     return os;
 }
