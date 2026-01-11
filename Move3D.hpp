@@ -2,7 +2,7 @@
  * @file    Move3D.hpp
  * @author  Akano(Xiao Zhihao) (zxiaoav@connect.ust.hk)
  * @brief   用于3D运动建模的库
- * @version 1.1.0
+ * @version 1.1.1
  * 核心功能
  * 1.Movement
  * 统一 predict(double dt) 的接口，描述一个物体的运动，本身是一个黑箱函数
@@ -156,7 +156,7 @@ namespace Move3D{
             parabola = 1
         };
     private:
-        constexpr static double minTime = 0.01;
+        constexpr static double minTime = 1e-4;
         int iterationTime;
         int tryTime;
         double lambdaDecay;
@@ -251,7 +251,10 @@ namespace Move3D{
         }
         inline AimResult GetPitchYaw(const Movement& mov,double speed,BulletModel model = BulletModel::parabola){
             if(model == BulletModel::light){
-                //TODO:这将会引发 TIME_ERROR，考虑如何解决
+                //特化实现
+                double pitch = VectorToRPY(mov.GetNowPosition().ToVector()).pitch;
+                double yaw = VectorToRPY(mov.GetNowPosition().ToVector()).yaw;
+                return {pitch,yaw,0,{0,0,0},AimResult::ErrorCode::OK};
             }else if(model == BulletModel::parabola){
                 auto parabolaError = [&](double _pitch,double _yaw,double _speed,double _t){
                     UniformAcceleratedMotion bullet(
