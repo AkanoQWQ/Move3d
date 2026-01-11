@@ -2,7 +2,7 @@
  * @file    Move3D.hpp
  * @author  Akano(Xiao Zhihao) (zxiaoav@connect.ust.hk)
  * @brief   用于3D运动建模的库
- * @version 1.0.0
+ * @version 1.1.0
  * 核心功能
  * 1.Movement
  * 统一 predict(double dt) 的接口，描述一个物体的运动，本身是一个黑箱函数
@@ -14,9 +14,12 @@
 #include <iostream>
 #include <cmath>
 #include <utility>
+#include <functional>
 
 namespace Move3D{
     constexpr double EPS = 1e-10;
+    constexpr double G_VALUE = 9.81;
+
     struct Vector{
         double x,y,z;
         Vector() = default;
@@ -137,38 +140,28 @@ namespace Move3D{
     };
 
     class BallisticCalculator{
+    public:
+        using ErrorFunc = std::function<Vector(double,double,double,double)>;
+        struct AimResult{
+            double pitch,yaw,t;
+            Vector error;
+            enum class ErrorCode : unsigned int{
+                OK = 0,
+                TIME_ERROR = 1,
+                MODEL_ERROR = 2147483647
+            }errorCode;
+        };
+        enum class BulletModel : unsigned int{
+            light = 0,
+            parabola = 1
+        };
     private:
         constexpr static double minTime = 0.01;
         int iterationTime;
         int tryTime;
         double lambdaDecay;
         double dp,dy,dt;
-    public:
-        struct AimResult{
-            double pitch,yaw,t;
-            Vector error;
-            enum class ErrorCode : unsigned int{
-                OK = 0,
-                TIME_ERROR = 1
-            }errorCode;
-        };
-        BallisticCalculator() = delete;
-        BallisticCalculator(int _iterationTime,int _tryTime,double _lambdaDecay,
-            double _dp,double _dy,double _dt){
-            iterationTime = _iterationTime;
-            tryTime = _tryTime;
-            lambdaDecay = _lambdaDecay;
-            dp = _dp,dy = _dy,dt = _dt;
-        }
-        AimResult GetPitchYaw(const Movement& mov,double speed){
-            auto EvalError = [&](double _pitch,double _yaw,double _t){
-                UniformAcceleratedMotion bullet(
-                    Point(0,0,0),
-                    RotateRPY(Vector(speed,0,0),RPY(0,_pitch,_yaw)),
-                    Vector(0,0,-9.8)
-                );
-                return (bullet.Predict(_t) - mov.Predict(_t));
-            };
+        AimResult GetPitchYawBasic(const Movement& mov,double speed,const ErrorFunc& evalError){
             auto Solve3x3 = [](double l[3][4]){
                 for(int i = 0;i < 3;i++){
                     int swaptail = i;
@@ -209,13 +202,13 @@ namespace Move3D{
             double pitch = VectorToRPY(mov.GetNowPosition().ToVector()).pitch;
             double yaw = VectorToRPY(mov.GetNowPosition().ToVector()).yaw;
             double t = mov.GetNowPosition().ToVector().GetLen() / speed;
-            Vector nowError = EvalError(pitch,yaw,t);
+            Vector nowError = evalError(pitch,yaw,speed,t);
             if(t < minTime)return{pitch,yaw,t,nowError,AimResult::ErrorCode::TIME_ERROR};
 
             for(int iterationStep = 0;iterationStep < iterationTime;iterationStep++){
-                Vector ep = EvalError(pitch + dp,yaw,t);
-                Vector ey = EvalError(pitch,yaw + dy,t);
-                Vector et = EvalError(pitch,yaw,t + dt);
+                Vector ep = evalError(pitch + dp,yaw,speed,t);
+                Vector ey = evalError(pitch,yaw + dy,speed,t);
+                Vector et = evalError(pitch,yaw,speed,t + dt);
                 double matrix[3][4] = {
                     {(ep.x - nowError.x)/dp,(ey.x - nowError.x)/dy,(et.x - nowError.x)/dt,-nowError.x},
                     {(ep.y - nowError.y)/dp,(ey.y - nowError.y)/dy,(et.y - nowError.y)/dt,-nowError.y},
@@ -231,7 +224,7 @@ namespace Move3D{
                     double newPitch = pitch + lambda * matrix[0][3];
                     double newYaw   = yaw + lambda * matrix[1][3];
                     double newT     = t + lambda * matrix[2][3];
-                    Vector newError = EvalError(newPitch,newYaw,newT);
+                    Vector newError = evalError(newPitch,newYaw,speed,newT);
                     if(newError.GetLen() < nowError.GetLen()){
                         pitch = newPitch,yaw = newYaw,t = newT,nowError = newError;
                         accepted = true;
@@ -246,6 +239,31 @@ namespace Move3D{
                 if(t < minTime)return{pitch,yaw,t,nowError,AimResult::ErrorCode::TIME_ERROR};
             }
             return {pitch,yaw,t,nowError,AimResult::ErrorCode::OK};
+        }
+    public:
+        BallisticCalculator() = delete;
+        BallisticCalculator(int _iterationTime,int _tryTime,double _lambdaDecay,
+            double _dp,double _dy,double _dt){
+            iterationTime = _iterationTime;
+            tryTime = _tryTime;
+            lambdaDecay = _lambdaDecay;
+            dp = _dp,dy = _dy,dt = _dt;
+        }
+        inline AimResult GetPitchYaw(const Movement& mov,double speed,BulletModel model = BulletModel::parabola){
+            if(model == BulletModel::light){
+                //TODO:这将会引发 TIME_ERROR，考虑如何解决
+            }else if(model == BulletModel::parabola){
+                auto parabolaError = [&](double _pitch,double _yaw,double _speed,double _t){
+                    UniformAcceleratedMotion bullet(
+                        Point(0,0,0),
+                        RotateRPY(Vector(_speed,0,0),RPY(0,_pitch,_yaw)),
+                        Vector(0,0,-G_VALUE)
+                    );
+                    return (bullet.Predict(_t) - mov.Predict(_t));
+                };
+                return GetPitchYawBasic(mov,speed,parabolaError);
+            }
+            return {0,0,0,{},AimResult::ErrorCode::MODEL_ERROR};
         }
     };
 }//namespace Move3D
