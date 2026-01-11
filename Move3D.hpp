@@ -1,3 +1,16 @@
+/**
+ * @file    Move3D.hpp
+ * @author  Akano(Xiao Zhihao) (zxiaoav@connect.ust.hk)
+ * @brief   用于3D运动建模的库
+ * @version 1.0.0
+ * 核心功能
+ * 1.Movement
+ * 统一 predict(double dt) 的接口，描述一个物体的运动，本身是一个黑箱函数
+ * 提供了一些自带的运动模型，也可以手动继承构造Movement的子类描述运动。
+ * 2.BallisticCalculator
+ * 传入一个目标的运动Movement，解出该以何种姿态发出子弹才能击中目标。
+ * 目前统一使用纯抛物线模型
+ */
 #include <iostream>
 #include <cmath>
 #include <utility>
