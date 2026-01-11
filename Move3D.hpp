@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cmath>
+#include <utility>
 
 namespace Move3D{
     constexpr double EPS = 1e-10;
@@ -36,7 +38,7 @@ namespace Move3D{
         }
     };
 
-    Vector operator-(const Point& p1,const Point& p2){
+    inline Vector operator-(const Point& p1,const Point& p2){
         return Vector(p1.x - p2.x,p1.y - p2.y,p1.z - p2.z);
     }
 
@@ -118,6 +120,119 @@ namespace Move3D{
         }
         Point Predict(double dt) const override {
             return nowPosition + velocity * dt + acceleration * 0.5 * dt * dt;
+        }
+    };
+
+    class BallisticCalculator{
+    private:
+        constexpr static double minTime = 0.01;
+        int iterationTime;
+        int tryTime;
+        double lambdaDecay;
+        double dp,dy,dt;
+    public:
+        struct AimResult{
+            double pitch,yaw,t;
+            Vector error;
+            enum class ErrorCode : unsigned int{
+                OK = 0,
+                TIME_ERROR = 1
+            }errorCode;
+        };
+        BallisticCalculator() = delete;
+        BallisticCalculator(int _iterationTime,int _tryTime,double _lambdaDecay,
+            double _dp,double _dy,double _dt){
+            iterationTime = _iterationTime;
+            tryTime = _tryTime;
+            lambdaDecay = _lambdaDecay;
+            dp = _dp,dy = _dy,dt = _dt;
+        }
+        AimResult GetPitchYaw(const Movement& mov,double speed){
+            auto EvalError = [&](double _pitch,double _yaw,double _t){
+                UniformAcceleratedMotion bullet(
+                    Point(0,0,0),
+                    RotateRPY(Vector(speed,0,0),RPY(0,_pitch,_yaw)),
+                    Vector(0,0,-9.8)
+                );
+                return (bullet.Predict(_t) - mov.Predict(_t));
+            };
+            auto Solve3x3 = [](double l[3][4]){
+                for(int i = 0;i < 3;i++){
+                    int swaptail = i;
+                    for(int j = i+1;j < 3;j++){
+                        if(fabsl(l[j][i]) > fabsl(l[swaptail][i])){
+                            swaptail = j;
+                        }
+                    }
+                    if(swaptail != i){
+                        for(int j = 0;j <= 3;j++){
+                            std::swap(l[i][j],l[swaptail][j]);
+                        }
+                    }
+                    if(fabsl(l[i][i]) < EPS){
+                        return false;
+                    }
+                    for(int j = 3;j >= i;j--){
+                        l[i][j] /= l[i][i];
+                    }
+                    for(int j = i+1;j < 3;j++){
+                        for(int k = 3;k >= i;k--){
+                            l[j][k] -= l[j][i] * l[i][k];
+                        }
+                    }
+                }
+                for(int i = 2;i >= 0;i--){
+                    for(int j = i-1;j >= 0;j--){
+                        l[j][3] -= l[i][3] * l[j][i];
+                    }
+                }
+                return true;
+            };
+            auto WrapPi = [&](double& val){
+                while(val > M_PI)val -= 2*M_PI;
+                while(val <= -M_PI)val += 2*M_PI;
+            };
+
+            double pitch = VectorToRPY(mov.GetNowPosition().ToVector()).pitch;
+            double yaw = VectorToRPY(mov.GetNowPosition().ToVector()).yaw;
+            double t = mov.GetNowPosition().ToVector().GetLen() / speed;
+            Vector nowError = EvalError(pitch,yaw,t);
+            if(t < minTime)return{pitch,yaw,t,nowError,AimResult::ErrorCode::TIME_ERROR};
+
+            for(int iterationStep = 0;iterationStep < iterationTime;iterationStep++){
+                Vector ep = EvalError(pitch + dp,yaw,t);
+                Vector ey = EvalError(pitch,yaw + dy,t);
+                Vector et = EvalError(pitch,yaw,t + dt);
+                double matrix[3][4] = {
+                    {(ep.x - nowError.x)/dp,(ey.x - nowError.x)/dy,(et.x - nowError.x)/dt,-nowError.x},
+                    {(ep.y - nowError.y)/dp,(ey.y - nowError.y)/dy,(et.y - nowError.y)/dt,-nowError.y},
+                    {(ep.z - nowError.z)/dp,(ey.z - nowError.z)/dy,(et.z - nowError.z)/dt,-nowError.z}
+                };
+
+                bool accepted = Solve3x3(matrix);
+                if(accepted == false)break;
+
+                double lambda = 1.0;
+                accepted = false;
+                for(int tryStep = 0;tryStep < tryTime;tryStep++){
+                    double newPitch = pitch + lambda * matrix[0][3];
+                    double newYaw   = yaw + lambda * matrix[1][3];
+                    double newT     = t + lambda * matrix[2][3];
+                    Vector newError = EvalError(newPitch,newYaw,newT);
+                    if(newError.GetLen() < nowError.GetLen()){
+                        pitch = newPitch,yaw = newYaw,t = newT,nowError = newError;
+                        accepted = true;
+                        WrapPi(yaw),WrapPi(pitch);
+                        break;
+                    }else{
+                        lambda *= lambdaDecay;
+                    }
+                }
+                if(accepted == false)break;
+                
+                if(t < minTime)return{pitch,yaw,t,nowError,AimResult::ErrorCode::TIME_ERROR};
+            }
+            return {pitch,yaw,t,nowError,AimResult::ErrorCode::OK};
         }
     };
 }//namespace Move3D
